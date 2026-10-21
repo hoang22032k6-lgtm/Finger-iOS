@@ -12,7 +12,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.fingercounter
-        INFOPLIST_KEY_NSCameraUsageDescription: "Camera được dùng để nhận diện bàn tay và khuôn mặt."
+        INFOPLIST_FILE: FingerCounter/Info.plist
         SWIFT_VERSION: 5.0
         TARGETED_DEVICE_FAMILY: "1,2"
         CODE_SIGNING_ALLOWED: "NO"
