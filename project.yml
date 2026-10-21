@@ -1,0 +1,19 @@
+name: FingerCounter
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  FingerCounter:
+    type: application
+    platform: iOS
+    sources:
+      - path: FingerCounter
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.fingercounter
+        INFOPLIST_KEY_NSCameraUsageDescription: "Camera được dùng để nhận diện bàn tay và khuôn mặt."
+        SWIFT_VERSION: 5.0
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGNING_ALLOWED: "NO"
+        CODE_SIGNING_REQUIRED: "NO"
