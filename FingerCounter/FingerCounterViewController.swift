@@ -94,16 +94,10 @@ final class FingerCounterViewController: UIViewController {
             if connection.isVideoOrientationSupported {
                 connection.videoOrientation = .portrait
             }
-            if connection.isVideoMirroringSupported {
-                connection.isVideoMirrored = true
-            }
         }
         if let previewConnection = previewView.videoPreviewLayer.connection,
            previewConnection.isVideoOrientationSupported {
             previewConnection.videoOrientation = .portrait
-            if previewConnection.isVideoMirroringSupported {
-                previewConnection.isVideoMirrored = true
-            }
         }
         handRequest.maximumHandCount = 2
         captureSession.commitConfiguration()
