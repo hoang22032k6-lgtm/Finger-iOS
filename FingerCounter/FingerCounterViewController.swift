@@ -12,6 +12,8 @@ final class FingerCounterViewController: UIViewController {
     private let handRequest = VNDetectHumanHandPoseRequest()
     private let faceRequest = VNDetectFaceLandmarksRequest()
     private var isConfigured = false
+    private var frameNumber = 0
+    private var latestFaceData: FaceData?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -31,6 +33,8 @@ final class FingerCounterViewController: UIViewController {
         previewView.videoPreviewLayer.videoGravity = .resizeAspectFill
         view.addSubview(previewView)
         view.addSubview(overlayView)
+        overlayView.backgroundColor = .clear
+        overlayView.isUserInteractionEnabled = false
 
         statusLabel.text = "Đưa tay và khuôn mặt vào camera"
         statusLabel.textColor = .white
@@ -80,8 +84,15 @@ final class FingerCounterViewController: UIViewController {
         videoOutput.alwaysDiscardsLateVideoFrames = true
         captureSession.addOutput(videoOutput)
         if let connection = videoOutput.connection(with: .video) {
-            connection.videoOrientation = .portrait
+            if connection.isVideoOrientationSupported {
+                connection.videoOrientation = .portrait
+            }
             connection.isVideoMirrored = true
+        }
+        if let previewConnection = previewView.videoPreviewLayer.connection,
+           previewConnection.isVideoOrientationSupported {
+            previewConnection.videoOrientation = .portrait
+            previewConnection.isVideoMirrored = true
         }
         handRequest.maximumHandCount = 2
         captureSession.commitConfiguration()
@@ -108,8 +119,7 @@ final class FingerCounterViewController: UIViewController {
               let outerLips = landmarks.outerLips else { return nil }
 
         func points(_ region: VNFaceLandmarkRegion2D) -> [CGPoint] {
-            (0..<region.pointCount).map { index in
-                let local = region.normalizedPoints[index]
+            region.normalizedPoints.map { local in
                 return CGPoint(
                     x: observation.boundingBox.minX + local.x * observation.boundingBox.width,
                     y: observation.boundingBox.minY + local.y * observation.boundingBox.height
@@ -139,18 +149,28 @@ extension FingerCounterViewController: AVCaptureVideoDataOutputSampleBufferDeleg
     ) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .leftMirrored, options: [:])
+        frameNumber += 1
         do {
-            try handler.perform([handRequest, faceRequest])
+            try handler.perform(frameNumber % 3 == 0 ? [handRequest, faceRequest] : [handRequest])
             let hands = handRequest.results?.compactMap(handData) ?? []
-            let face = faceRequest.results?.first.flatMap(faceData)
+            if frameNumber % 3 == 0 {
+                latestFaceData = faceRequest.results?.first.flatMap(faceData)
+            }
             DispatchQueue.main.async { [weak self] in
-                self?.overlayView.update(hands: hands, face: face)
-                self?.statusLabel.text = hands.isEmpty && face == nil
-                    ? "Đưa tay và khuôn mặt vào camera"
-                    : "Xanh = mở · đỏ = đóng · chạm = vàng"
+                guard let self else { return }
+                self.overlayView.update(hands: hands, face: self.latestFaceData)
+                if hands.isEmpty && self.latestFaceData == nil {
+                    self.statusLabel.text = "Đưa tay và khuôn mặt vào camera"
+                } else {
+                    self.statusLabel.text = "Xanh = mở · đỏ = đóng · chạm = vàng"
+                }
             }
         } catch {
             print("Vision request failed: \(error.localizedDescription)")
+            DispatchQueue.main.async { [weak self] in
+                self?.overlayView.update(hands: [], face: nil)
+                self?.statusLabel.text = "Không nhận diện được, hãy đưa mặt/tay gần camera"
+            }
         }
     }
 }
