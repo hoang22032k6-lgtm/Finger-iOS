@@ -26,6 +26,13 @@ final class FingerCounterViewController: UIViewController {
         super.viewDidLayoutSubviews()
         previewView.frame = view.bounds
         overlayView.frame = view.bounds
+        overlayView.pointConverter = { [weak self] point in
+            guard let self else { return .zero }
+            let capturePoint = CGPoint(x: point.x, y: 1 - point.y)
+            return self.previewView.videoPreviewLayer.layerPointConverted(
+                fromCaptureDevicePoint: capturePoint
+            )
+        }
     }
 
     private func configureInterface() {
@@ -217,6 +224,7 @@ private final class LandmarkOverlayView: UIView {
     override func draw(_ rect: CGRect) {
         super.draw(rect)
         guard let context = UIGraphicsGetCurrentContext() else { return }
+        context.clear(rect)
         for hand in hands {
             drawHand(hand, in: context)
         }
@@ -232,12 +240,13 @@ private final class LandmarkOverlayView: UIView {
         let thumb = hand.tips[0]
         let scale = max(distance(thumb, hand.tips[2]), 0.03)
         let hitRadius = scale * 0.16
+        let displayRadius = max(10, hitRadius * min(bounds.width, bounds.height))
         for index in 1..<hand.tips.count {
             let touching = distance(thumb, hand.tips[index]) <= hitRadius * 2
             drawLine(thumb, hand.tips[index], color: touching ? .systemYellow : colors[index], width: touching ? 7 : 4, in: context)
-            drawDot(hand.tips[index], color: touching ? .systemYellow : colors[index], radius: hitRadius, in: context)
+            drawDot(hand.tips[index], color: touching ? .systemYellow : colors[index], radius: displayRadius, in: context)
         }
-        drawDot(thumb, color: .systemOrange, radius: hitRadius, in: context)
+        drawDot(thumb, color: .systemOrange, radius: displayRadius, in: context)
     }
 
     private func drawLine(_ first: CGPoint, _ second: CGPoint, color: UIColor, width: CGFloat, in context: CGContext) {
@@ -255,12 +264,14 @@ private final class LandmarkOverlayView: UIView {
     }
 
     private func convert(_ point: CGPoint) -> CGPoint {
-        CGPoint(x: point.x * bounds.width, y: (1 - point.y) * bounds.height)
+        pointConverter?(point) ?? CGPoint(x: point.x * bounds.width, y: (1 - point.y) * bounds.height)
     }
 
     private func distance(_ first: CGPoint, _ second: CGPoint) -> CGFloat {
         hypot(first.x - second.x, first.y - second.y)
     }
+
+    var pointConverter: ((CGPoint) -> CGPoint)?
 }
 
 final class PreviewView: UIView {
